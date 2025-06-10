@@ -49,39 +49,37 @@
 
     const API_URL = "https://script.google.com/macros/s/AKfycbwcTmY404LbkQh8mblRinCRs9Zx_MNe5sp5g0EX3VGdFePxULzTgyYzce2OSBMVjl5c/exec";
 
-    async function salvarRegistro() {
-      const campo = document.getElementById("fieldSelect").value;
-      const horario = document.getElementById("timeInput").value;
+  async function salvarRegistro() {
+    const campo = document.getElementById("fieldSelect").value;
+    const horario = document.getElementById("timeInput").value;
+    const API_URL = "https://script.google.com/macros/s/AKfycbwcTmY404LbkQh8mblRinCRs9Zx_MNe5sp5g0EX3VGdFePxULzTgyYzce2OSBMVjl5c/exec";
 
-      if (!accessToken || !usuarioEmail) {
-        alert("Você precisa estar logado para enviar os horários.");
-        return;
-      }
+    const payload = {
+      email: usuarioEmail,
+      campo: campo,
+      horario: horario
+    };
 
-      const payload = {
-        email: usuarioEmail,
-        campo: campo,
-        horario: horario
-      };
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      });
 
-      try {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + accessToken
-          },
-          body: JSON.stringify(payload)
-        });
+      if (!res.ok) throw new Error("Erro HTTP: " + res.status);
 
-        const msg = await res.text();
-        document.getElementById("mensagem").innerText = msg;
-        carregarHoras();
-      } catch (err) {
-        document.getElementById("mensagem").innerText = "Erro ao enviar horário.";
-        console.error(err);
-      }
+      const msg = await res.text();
+      document.getElementById("mensagem").innerText = msg;
+      document.getElementById("mensagem").style.color = "green";
+      carregarHoras();
+
+    } catch (error) {
+      console.error("Erro ao enviar:", error);
+      document.getElementById("mensagem").innerText = "Erro ao enviar horário.";
+      document.getElementById("mensagem").style.color = "red";
     }
+  }
 
     async function carregarHoras() {
       if (!usuarioEmail) return;
