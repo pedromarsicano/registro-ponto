@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -6,19 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Registro de Ponto</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <button id="loginBtn">Login com Google</button>
 </head>
 <body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col items-center p-4">
   <div class="w-full max-w-xl bg-white rounded-2xl shadow-md p-6 mt-8">
     <h1 class="text-2xl font-bold text-center mb-6">Registro de Ponto</h1>
 
     <div id="loginArea" class="text-center mb-6">
-      <div id="g_id_onload"
-           data-client_id="901853598842-ht0imaf0f4e0k2qbtdnkov4pjegqnajr.apps.googleusercontent.com"
-           data-callback="handleCredentialResponse"
-           data-auto_prompt="false">
-      </div>
-      <div class="g_id_signin" data-type="standard"></div>
+      <button id="loginBtn" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Login com Google</button>
     </div>
 
     <div id="appArea" class="space-y-4 hidden">
@@ -51,28 +44,19 @@
   </div>
 
   <script>
+    let accessToken = null;
     let usuarioEmail = null;
 
-    function handleCredentialResponse(response) {
-      const data = parseJwt(response.credential);
-      usuarioEmail = data.email;
-      document.getElementById('loginArea').classList.add('hidden');
-      document.getElementById('appArea').classList.remove('hidden');
-    }
-
-    function parseJwt(token) {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      return JSON.parse(jsonPayload);
-    }
+    const API_URL = "https://script.google.com/macros/s/AKfycbwcTmY404LbkQh8mblRinCRs9Zx_MNe5sp5g0EX3VGdFePxULzTgyYzce2OSBMVjl5c/exec";
 
     async function salvarRegistro() {
       const campo = document.getElementById("fieldSelect").value;
       const horario = document.getElementById("timeInput").value;
-      const API_URL = "https://script.google.com/macros/s/AKfycbwcTmY404LbkQh8mblRinCRs9Zx_MNe5sp5g0EX3VGdFePxULzTgyYzce2OSBMVjl5c/exec";
+
+      if (!accessToken || !usuarioEmail) {
+        alert("Você precisa estar logado para enviar os horários.");
+        return;
+      }
 
       const payload = {
         email: usuarioEmail,
@@ -80,20 +64,28 @@
         horario: horario
       };
 
-      const res = await fetch(url, {
-        method: "POST",
-        body: JSON.stringify(payload),
-        headers: { "Content-Type": "application/json" }
-      });
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + accessToken
+          },
+          body: JSON.stringify(payload)
+        });
 
-      const msg = await res.text();
-      document.getElementById("mensagem").innerText = msg;
-      carregarHoras();
+        const msg = await res.text();
+        document.getElementById("mensagem").innerText = msg;
+        carregarHoras();
+      } catch (err) {
+        document.getElementById("mensagem").innerText = "Erro ao enviar horário.";
+        console.error(err);
+      }
     }
 
     async function carregarHoras() {
-      const url = "https://script.google.com/macros/s/AKfycbwcTmY404LbkQh8mblRinCRs9Zx_MNe5sp5g0EX3VGdFePxULzTgyYzce2OSBMVjl5c/exec?email=" + usuarioEmail;
-      const res = await fetch(url);
+      if (!usuarioEmail) return;
+      const res = await fetch(`${API_URL}?email=${usuarioEmail}`);
       const dados = await res.json();
 
       const lista = document.getElementById("historico");
@@ -109,51 +101,46 @@
 
       document.getElementById("totalSemana").innerText = total.toFixed(2) + "h";
     }
-  </script>
-<script>
-  const client_id = '901853598842-ht0imaf0f4e0k2qbtdnkov4pjegqnajr.apps.googleusercontent.com';
-  const redirect_uri = window.location.origin + window.location.pathname; // sua própria página
-  const scope = 'email profile openid';
-  const response_type = 'token'; // Implicit flow - token no hash
 
-  // Monta URL para redirecionar para o login Google
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=${response_type}&scope=${encodeURIComponent(scope)}&include_granted_scopes=true&state=state_parameter_passthrough_value`;
-
-  // Ao clicar no botão, redireciona para login Google
-  document.getElementById('loginBtn').onclick = function() {
-    window.location.href = authUrl;
-  };
-
-  // Função para capturar token do hash da URL após login
-  function getAccessTokenFromUrl() {
-    const hash = window.location.hash.substr(1);
-    const params = new URLSearchParams(hash);
-    return params.get('access_token');
-  }
-
-  window.onload = () => {
-    const token = getAccessTokenFromUrl();
-    if (token) {
-      console.log('Token obtido:', token);
-      // Aqui você pode esconder o botão de login e mostrar que o usuário está logado
-      document.getElementById('loginBtn').style.display = 'none';
-
-      // Exemplo: buscar informações do usuário com o token
-      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: {
-          Authorization: 'Bearer ' + token
-        }
-      })
-      .then(response => response.json())
-      .then(userinfo => {
-        console.log('Usuário:', userinfo);
-        // Faça algo com os dados do usuário, exibir nome, etc.
-        const divUser = document.createElement('div');
-        divUser.textContent = 'Olá, ' + userinfo.name;
-        document.body.appendChild(divUser);
-      });
+    function getAccessTokenFromUrl() {
+      const hash = window.location.hash.substr(1);
+      const params = new URLSearchParams(hash);
+      return params.get('access_token');
     }
-  };
-</script>
+
+    window.onload = () => {
+      const token = getAccessTokenFromUrl();
+      if (token) {
+        accessToken = token;
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('loginArea').classList.add('hidden');
+        document.getElementById('appArea').classList.remove('hidden');
+
+        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: {
+            Authorization: 'Bearer ' + token
+          }
+        })
+        .then(response => response.json())
+        .then(userinfo => {
+          usuarioEmail = userinfo.email;
+          const divUser = document.createElement('div');
+          divUser.textContent = 'Olá, ' + userinfo.name;
+          document.body.appendChild(divUser);
+          carregarHoras();
+        });
+      }
+    };
+
+    const client_id = '901853598842-ht0imaf0f4e0k2qbtdnkov4pjegqnajr.apps.googleusercontent.com';
+    const redirect_uri = window.location.origin + window.location.pathname;
+    const scope = 'email profile openid';
+    const response_type = 'token';
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${client_id}&redirect_uri=${encodeURIComponent(redirect_uri)}&response_type=${response_type}&scope=${encodeURIComponent(scope)}&include_granted_scopes=true&state=state_parameter_passthrough_value`;
+
+    document.getElementById('loginBtn').onclick = function() {
+      window.location.href = authUrl;
+    };
+  </script>
 </body>
 </html>
